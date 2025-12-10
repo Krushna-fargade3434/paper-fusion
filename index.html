@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Merge multiple PDFs privately in your browser. Fast, secure, and free." />
+  <meta name="theme-color" content="#0b1220" />
+  <title>PAPER‑FUSION</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- styles -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- pdf-lib (for merging) -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+  <!-- SortableJS (for reordering list) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+  <!-- DOMPurify (for XSS prevention) -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+</head>
+<body>
+  <main class="app" role="main">
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="6" y="6" width="36" height="36" rx="10" fill="var(--accent-ghost)"/>
+            <path d="M14 30h12c4.418 0 8-3.582 8-8V14" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+            <path d="M18 18h12v12" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="brand-copy">
+          <h1>PAPER‑FUSION</h1>
+          <p class="subtitle">Merge PDFs in your browser — fast, private, and secure. No upload limits.</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="theme-toggle" class="icon-btn theme-toggle" aria-label="Toggle dark mode" title="Toggle theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M12 4.5a1 1 0 0 0 1-1V2a1 1 0 1 0-2 0v1.5a1 1 0 0 0 1 1Zm0 17a1 1 0 0 0-1 1V24a1 1 0 1 0 2 0v-1.5a1 1 0 0 0-1-1Zm7.5-7.5a1 1 0 0 0 1-1 1 1 0 1 0-2 0 1 1 0 0 0 1 1Zm-15 0a1 1 0 0 0 1-1 1 1 0 1 0-2 0 1 1 0 0 0 1 1ZM18.364 6.636a1 1 0 0 0 1.414-1.414l-1.06-1.06a1 1 0 1 0-1.415 1.414l1.061 1.06Zm-12.728 0 1.06-1.06A1 1 0 1 0 5.282 4.16l-1.06 1.06A1 1 0 1 0 5.636 6.636Zm12.728 12.728a1 1 0 1 0-1.414 1.414l1.06 1.06a1 1 0 0 0 1.415-1.414l-1.061-1.06Zm-12.728 0-1.06 1.06A1 1 0 1 0 5.282 23.84l1.06-1.06a1 1 0 1 0-1.415-1.414ZM12 7a5 5 0 1 0 0 10A5 5 0 0 0 12 7Z"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 1 0 9.79 9.79Z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="uploader">
+      <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Choose PDF files or drag and drop">
+        <input id="file-input" type="file" accept="application/pdf" multiple hidden />
+        <div class="dz-left">
+          <div class="upload-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15a4 4 0 0 0-3-3.87 5.5 5.5 0 1 0-10.9 1.64A4 4 0 1 0 7 20h11a4 4 0 0 0 3-5Z"/>
+              <path d="M12 12V6"/><path d="m9 9 3-3 3 3"/>
+            </svg>
+          </div>
+          <div class="dz-text">
+            <div class="dz-title">Drop your PDFs here</div>
+            <div class="dz-sub">
+              <button id="pick-files" class="btn secondary">Choose PDF files</button>
+              <span class="or">or drag & drop</span>
+            </div>
+            <div class="hint">Private: files never leave your browser.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="file-list-wrap" class="file-list-wrap" aria-live="polite">
+        <ul id="file-list" class="file-list"></ul>
+      </div>
+
+      <div class="actions">
+        <div class="actions-left">
+          <button id="merge-btn" class="btn primary" disabled>Merge PDFs</button>
+          <button id="clear-btn" class="btn danger" disabled>Clear</button>
+        </div>
+        <div class="actions-right">
+          <div id="summary" class="summary" aria-live="polite"></div>
+          <div class="progress" aria-hidden="true" id="progress"><div id="progress-bar"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Toast notifications -->
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <footer class="footer">
+      <small>© 2025 PAPER‑FUSION. All rights reserved.</small>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
